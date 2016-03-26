@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+.floated_img {
+  float: left;
+  height: 20px;
+}
+.row {
+  clear: both;
+}
+</style>
+
+</head>
+
+<body>
+
+{{ range $row := . }}
+  <div class="row">
+  {{ range $link := $row }}
+    <div class="floated_img"><img src={{ $link }}></div>
+  {{ end }}
+  </div>
+  <br>
+{{ end }}
+</body>
