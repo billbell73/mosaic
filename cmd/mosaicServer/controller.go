@@ -13,7 +13,7 @@ import (
 )
 
 func newHandler(w http.ResponseWriter, r *http.Request) {
-	t, err := template.ParseFiles("../../views/new.html")
+	t, err := template.ParseFiles("views/new.html")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func showHandler(w http.ResponseWriter, r *http.Request) {
 
 	mosaic := createMosaic(original)
 
-	t, err := template.ParseFiles("../../views/show.html")
+	t, err := template.ParseFiles("views/show.html")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -50,6 +50,10 @@ func main() {
 	})
 	http.HandleFunc("/new", newHandler)
 	http.HandleFunc("/show", showHandler)
+
+	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "favicon.ico")
+	})
 
 	port := os.Getenv("PORT")
 	if port == "" {
