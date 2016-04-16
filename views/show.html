@@ -2,7 +2,7 @@
 <html>
 <head>
 <style>
-.floated_img {
+.tile {
   float: left;
   height: 20px;
 }
@@ -15,12 +15,18 @@
 
 <body>
 
-{{ range $row := . }}
-  <div class="row">
-  {{ range $link := $row }}
-    <div class="floated_img"><img src={{ $link }}></div>
+  {{ range $row := .Mosaic }}
+    <div class="row" width="50%">
+    {{ range $link := $row }}
+      <div class="tile"><img src={{ $link }}></div>
+    {{ end }}
+    </div>
   {{ end }}
-  </div>
-  <br>
-{{ end }}
+
+  <br><br>
+  <img src="data:image/jpg;base64,{{.Original}}" width="{{.Width}}px">
+
+
+
+
 </body>

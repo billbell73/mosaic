@@ -1,15 +1,18 @@
 package main
 
 import (
+	"bytes"
+	"encoding/base64"
+	"html/template"
 	"image"
+	"image/jpeg"
 	"log"
 	"net/http"
 	"os"
-	"text/template"
+
+	_ "image/png"
 
 	_ "github.com/lib/pq"
-
-	_ "image/jpeg"
 )
 
 func newHandler(w http.ResponseWriter, r *http.Request) {
@@ -23,6 +26,8 @@ func newHandler(w http.ResponseWriter, r *http.Request) {
 func showHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseMultipartForm(10485760) // max body in memory is 10MB
 	file, _, err := r.FormFile("image")
+	log.Printf("%T", file)
+
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -35,13 +40,26 @@ func showHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("Format: ", format)
 	log.Println("Bounds of original image: ", original.Bounds())
 
-	mosaic := createMosaic(original)
+	mosaic, width := createMosaic(original)
+
+	buffer := new(bytes.Buffer)
+	if err := jpeg.Encode(buffer, original, nil); err != nil {
+		log.Fatal("Unable to encode original image: ", err)
+	}
+	str := base64.StdEncoding.EncodeToString(buffer.Bytes())
 
 	t, err := template.ParseFiles("views/show.html")
 	if err != nil {
 		log.Fatal(err)
 	}
-	t.Execute(w, mosaic)
+	t.Execute(w, show{mosaic, str, "2", width})
+}
+
+type show struct {
+	Mosaic   [][]string
+	Original string
+	Duration string
+	Width    int
 }
 
 func main() {

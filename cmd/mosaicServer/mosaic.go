@@ -10,6 +10,7 @@ import (
 )
 
 const numberOfTilesRow = 40
+const tileSize = 20
 
 var tileColorAverages *map[string][3]int
 
@@ -61,7 +62,7 @@ type SubImager interface {
 	SubImage(r image.Rectangle) image.Image
 }
 
-func createMosaic(original image.Image) [][]string {
+func createMosaic(original image.Image) ([][]string, int) {
 	awsUrl := os.Getenv("AWS_URL")
 	if awsUrl == "" {
 		log.Fatal("$AWS_URL must be set")
@@ -73,13 +74,13 @@ func createMosaic(original image.Image) [][]string {
 
 	var mosaic [][]string
 	bounds := original.Bounds()
-	tileSize := bounds.Max.X / numberOfTilesRow
-	log.Println("tileSize: ", tileSize)
+	sectionSize := bounds.Max.X / numberOfTilesRow
+	log.Println("sectionSize: ", sectionSize)
 
-	for y := bounds.Min.Y; y < bounds.Max.Y; y = y + tileSize {
+	for y := bounds.Min.Y; y < bounds.Max.Y; y = y + sectionSize {
 		var mosaicRow []string
-		for x := bounds.Min.X; x < bounds.Max.X; x = x + tileSize {
-			sectionCoords := image.Rect(x, y, x+tileSize, y+tileSize)
+		for x := bounds.Min.X; x < bounds.Max.X; x = x + sectionSize {
+			sectionCoords := image.Rect(x, y, x+sectionSize, y+sectionSize)
 			section := original.(SubImager).SubImage(sectionCoords)
 			sectionColor := imageAnalyser.AverageColor(section, imageAnalyser.TotalRGB)
 
@@ -89,7 +90,8 @@ func createMosaic(original image.Image) [][]string {
 		}
 		mosaic = append(mosaic, mosaicRow)
 	}
-	return mosaic
+	width := len(mosaic[0]) * tileSize
+	return mosaic, width
 }
 
 // find the nearest matching image
