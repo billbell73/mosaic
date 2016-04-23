@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"os"
 	"time"
+	"sync"
+	"runtime"
 
 	_ "image/png"
 
@@ -25,6 +27,9 @@ func newHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func showHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("Number of CPUs:", runtime.NumCPU())
+  runtime.GOMAXPROCS(runtime.NumCPU())
+
 	t0 := time.Now()
 	r.ParseMultipartForm(10485760) // max body in memory is 10MB
 	file, _, err := r.FormFile("image")
@@ -44,17 +49,31 @@ func showHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("Format: ", format)
 	log.Println("Bounds of original image: ", original.Bounds())
 
-	t1 := time.Now()
+	var wg sync.WaitGroup
+	wg.Add(2)
 
-	mosaic, width := createMosaic(original)
+	var mosaic [][]string
+	var width int
+	var str string
+
+	t1 := time.Now()
+	go func() {
+		defer wg.Done()
+		mosaic, width = createMosaic(original)
+	}()
 
 	t2 := time.Now()
 
-	buffer := new(bytes.Buffer)
-	if err := jpeg.Encode(buffer, original, nil); err != nil {
-		log.Fatal("Unable to encode original image: ", err)
-	}
-	str := base64.StdEncoding.EncodeToString(buffer.Bytes())
+	go func() {
+		defer wg.Done()
+		buffer := new(bytes.Buffer)
+		if err := jpeg.Encode(buffer, original, nil); err != nil {
+			log.Fatal("Unable to encode original image: ", err)
+		}
+		str = base64.StdEncoding.EncodeToString(buffer.Bytes())
+	}()
+
+	wg.Wait()
 
 	t3 := time.Now()
 
@@ -62,12 +81,16 @@ func showHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("decode file:", t1.Sub(t05))
 	log.Println("Create mosaic:", t2.Sub(t1))
 	log.Println("Encode original:", t3.Sub(t2))
+	log.Println("Create mosaic & Encode original:", t3.Sub(t1))
 
 	t, err := template.ParseFiles("views/show.html")
 	if err != nil {
 		log.Fatal(err)
 	}
 	t.Execute(w, show{mosaic, str, "2", width})
+
+	t4 := time.Now()
+	log.Println("ParseFiles & Execute:", t4.Sub(t3))
 }
 
 type show struct {
