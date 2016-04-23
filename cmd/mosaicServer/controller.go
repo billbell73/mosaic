@@ -27,8 +27,7 @@ func newHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func showHandler(w http.ResponseWriter, r *http.Request) {
-	log.Println("Number of CPUs:", runtime.NumCPU())
-  runtime.GOMAXPROCS(runtime.NumCPU())
+  runtime.GOMAXPROCS(2)
 
 	t0 := time.Now()
 	r.ParseMultipartForm(10485760) // max body in memory is 10MB
@@ -50,19 +49,11 @@ func showHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("Bounds of original image: ", original.Bounds())
 
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(1)
 
-	var mosaic [][]string
-	var width int
-	var str string
+	var originalEncoded string
 
 	t1 := time.Now()
-	go func() {
-		defer wg.Done()
-		mosaic, width = createMosaic(original)
-	}()
-
-	t2 := time.Now()
 
 	go func() {
 		defer wg.Done()
@@ -70,27 +61,32 @@ func showHandler(w http.ResponseWriter, r *http.Request) {
 		if err := jpeg.Encode(buffer, original, nil); err != nil {
 			log.Fatal("Unable to encode original image: ", err)
 		}
-		str = base64.StdEncoding.EncodeToString(buffer.Bytes())
+		originalEncoded = base64.StdEncoding.EncodeToString(buffer.Bytes())
 	}()
 
-	wg.Wait()
+	t2 := time.Now()
 
-	t3 := time.Now()
+	mosaic, width := createMosaic(original)
 
-	log.Println("Parse form:", t05.Sub(t0))
-	log.Println("decode file:", t1.Sub(t05))
-	log.Println("Create mosaic:", t2.Sub(t1))
-	log.Println("Encode original:", t3.Sub(t2))
-	log.Println("Create mosaic & Encode original:", t3.Sub(t1))
+
 
 	t, err := template.ParseFiles("views/show.html")
 	if err != nil {
 		log.Fatal(err)
 	}
-	t.Execute(w, show{mosaic, str, "2", width})
+	t3 := time.Now()
+	wg.Wait()
+	t35 := time.Now()
+	t.Execute(w, show{mosaic, originalEncoded, "2", width})
 
 	t4 := time.Now()
-	log.Println("ParseFiles & Execute:", t4.Sub(t3))
+
+	log.Println("Parse form:", t05.Sub(t0))
+	log.Println("decode file:", t1.Sub(t05))
+	log.Println("Encode original:", t2.Sub(t1))
+	log.Println("Create mosaic:", t3.Sub(t2))
+	log.Println("Create mosaic & Encode original:", t35.Sub(t1))
+	log.Println("ParseFiles & Execute:", t4.Sub(t35))
 }
 
 type show struct {
