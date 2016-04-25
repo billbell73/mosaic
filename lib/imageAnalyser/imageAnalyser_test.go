@@ -25,10 +25,10 @@ func stubTotalRGB(img mosaicImage, bounds image.Rectangle) [3]int {
 	return [3]int{36, 36, 36}
 }
 
-func TestAverageColor(t *testing.T) {
-	v := AverageColor(testMosaicImage{}, stubTotalRGB)
-	if v != [3]int{4, 4, 4} {
-		t.Error("Expected [4 4 4], got ", v)
+func TestAverageRGB(t *testing.T) {
+	v := AverageRGB(testMosaicImage{}, stubTotalRGB)
+	if v != [3]int{9, 9, 9} {
+		t.Error("Expected [9 9 9], got ", v)
 	}
 }
 
@@ -36,7 +36,7 @@ func TestTotalRGB(t *testing.T) {
 	mosaic := testMosaicImage{}
 	bounds := mosaic.Bounds()
 	v := TotalRGB(mosaic, bounds)
-	if v != [3]int{27, 27, 27} {
-		t.Error("Expected [27 27 27], got ", v)
+	if v != [3]int{12, 12, 12} {
+		t.Error("Expected [12 12 12], got ", v)
 	}
 }

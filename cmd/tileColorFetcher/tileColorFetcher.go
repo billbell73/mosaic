@@ -1,3 +1,5 @@
+// fetches all images from Amazon s3 bucket and saves name
+// and red-green-blue averages in local database
 package main
 
 import (
@@ -85,7 +87,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		avg := imageAnalyser.AverageColor(img, imageAnalyser.TotalRGB)
+		avg := imageAnalyser.AverageRGB(img, imageAnalyser.TotalRGB)
 
 		saveToDb(stmt, name, avg)
 	}

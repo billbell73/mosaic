@@ -1,3 +1,5 @@
+// takes all the images in a directory and creates resized versions
+// in a different directory
 package main
 
 import (

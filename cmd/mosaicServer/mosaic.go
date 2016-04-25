@@ -9,15 +9,15 @@ import (
 	"github.com/billbell73/mosaic/lib/imageAnalyser"
 )
 
-const numberOfTilesRow = 40
-const tileSize = 20
+const (
+	tileSize = 20
+	roughTilesAcross = 40
+	hugeDistance = 10000000000
+)
 
 var tileColorAverages *map[string][3]int
 
-func init() {
-	tileColorAverages = colorAverages()
-}
-
+// loads filenames and average colors of tiles from database
 func colorAverages() *map[string][3]int {
 	db, err := sql.Open("postgres", os.Getenv("DATABASE_URL"))
 	if err != nil {
@@ -58,11 +58,12 @@ func colorAverages() *map[string][3]int {
 	return &colorAverages
 }
 
-type SubImager interface {
+type subImager interface {
 	SubImage(r image.Rectangle) image.Image
 }
 
-func createMosaic(original image.Image) ([][]string, int) {
+// iterates over original image and finds appropriate tile for each section
+func createMosaic(original image.Image) ([][]string) {
 	awsUrl := os.Getenv("AWS_URL")
 	if awsUrl == "" {
 		log.Fatal("$AWS_URL must be set")
@@ -74,15 +75,15 @@ func createMosaic(original image.Image) ([][]string, int) {
 
 	var mosaic [][]string
 	bounds := original.Bounds()
-	sectionSize := bounds.Max.X / numberOfTilesRow
+	sectionSize := (bounds.Max.X - bounds.Min.X) / roughTilesAcross
 	log.Println("sectionSize: ", sectionSize)
 
-	for y := bounds.Min.Y; y < bounds.Max.Y; y = y + sectionSize {
+	for y := bounds.Min.Y; y + sectionSize <= bounds.Max.Y; y = y + sectionSize {
 		var mosaicRow []string
-		for x := bounds.Min.X; x < bounds.Max.X; x = x + sectionSize {
+		for x := bounds.Min.X; x + sectionSize <= bounds.Max.X; x = x + sectionSize {
 			sectionCoords := image.Rect(x, y, x+sectionSize, y+sectionSize)
-			section := original.(SubImager).SubImage(sectionCoords)
-			sectionColor := imageAnalyser.AverageColor(section, imageAnalyser.TotalRGB)
+			section := original.(subImager).SubImage(sectionCoords)
+			sectionColor := imageAnalyser.AverageRGB(section, imageAnalyser.TotalRGB)
 
 			nearest := nearest(sectionColor, tileColorAverages)
 			awsLinkPrefix := awsUrl + "/" + awsBucket + "/"
@@ -90,35 +91,33 @@ func createMosaic(original image.Image) ([][]string, int) {
 		}
 		mosaic = append(mosaic, mosaicRow)
 	}
-	width := len(mosaic[0]) * tileSize
-	return mosaic, width
+	return mosaic
 }
 
-// find the nearest matching image
-func nearest(target [3]int, db *map[string][3]int) string {
-	var filename string
-	var smallest int
-	firstTime := true
+func width(mosaic [][]string) int {
+	return len(mosaic[0]) * tileSize
+}
 
-	for k, v := range *db {
+// finds the tile that is the nearest match for a color
+func nearest(target [3]int, colorAverages *map[string][3]int) string {
+	var filename string
+	smallest := hugeDistance
+
+	for k, v := range *colorAverages {
 		distance := distance(target, v)
-		if firstTime == true {
-			filename, smallest = k, distance
-			firstTime = false
-		} else if distance < smallest {
+		if distance < smallest {
 			filename, smallest = k, distance
 		}
 	}
-	// delete(*db, filename)
+	// delete(*colorAverages, filename)
 	return filename
 }
 
-// find the squared Eucleadian distance between 2 points
+// finds the squared Eucleadian distance between 2 points in 3D space
 func distance(p1 [3]int, p2 [3]int) int {
 	return sq(p2[0]-p1[0]) + sq(p2[1]-p1[1]) + sq(p2[2]-p1[2])
 }
 
-// find the square
 func sq(n int) int {
 	return n * n
 }

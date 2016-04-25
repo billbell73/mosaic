@@ -1,3 +1,4 @@
+// calculates the average red, green & blue of an image or subimage
 package imageAnalyser
 
 import (
@@ -10,7 +11,7 @@ type mosaicImage interface {
 	At(x, y int) color.Color
 }
 
-func AverageColor(img mosaicImage, fn colorTotaller) [3]int {
+func AverageRGB(img mosaicImage, fn colorTotaller) [3]int {
 	bounds := img.Bounds()
 	colors := fn(img, bounds)
 
@@ -29,6 +30,8 @@ type colorTotaller func(mosaicImage, image.Rectangle) [3]int
 
 func TotalRGB(img mosaicImage, bounds image.Rectangle) [3]int {
 	r, g, b := 0, 0, 0
+
+	// (bounds.Max.X-1, bounds.Max.Y-1) is lower right pixel
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
 			r1, g1, b1, _ := img.At(x, y).RGBA()
